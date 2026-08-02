@@ -12,3 +12,4 @@ daily/*/이미지/
 daily/*/main_image*.png
 __pycache__/
 *.pyc
+daily/*/_scope_본문확보.md
