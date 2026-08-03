@@ -2,9 +2,9 @@
 같은 구조(모델은 판정만, 파이썬이 파일 추출·병합) — 2026-08-02.
 
 입력은 헤드라인스크리닝.md(1차 통과분)이고, 수집URL.md·헤드라인스크리닝.md는 건드리지 않는다.
-출력은 새 파일 두 개뿐: 2차헤드라인스크리닝.md(통과=테마후보), 경제이슈참고.md(경제이슈참고).
-기각은 어디에도 안 남긴다(필요하면 헤드라인스크리닝.md와 2차헤드라인스크리닝.md를 URL 기준으로
-비교해서 빠진 것 = 기각으로 찾는다).
+출력은 새 파일 두 개뿐: 2차헤드라인스크리닝.md(통과=테마후보), 경제이슈참고.md(경제이슈참고 —
+단, REF_SECTIONS에 지정된 섹션 것만 기록. 2026-08-04 — 전 섹션 기록이 비효율적이라 좁힘).
+기각(그리고 REF_SECTIONS 밖에서 나온 경제이슈참고 판정)은 어디에도 안 남긴다.
 
 사용법:
     python screen_headlines_2.py prepare --date 20260803 [--sections 벤처스타트업]
@@ -21,6 +21,11 @@ from collect_urls import SECTIONS, load_existing, render, REPO_ROOT
 sys.stdout.reconfigure(encoding="utf-8")
 
 RESULT_RE = re.compile(r"^\s*(\d+)\s*[:.]\s*(.+)$")
+
+# 경제이슈참고는 이 두 섹션에서 나온 것만 기록한다(2026-08-04) - 다른 섹션에서도 경제이슈참고
+# 판정이 나오면 전부 기록하던 게 비효율적이라, 배경정보 성격상 가장 맞는 두 섹션으로 좁힘.
+# 대상 밖 섹션의 경제이슈참고 판정은 기각과 동일하게 버린다.
+REF_SECTIONS = {"경제정책", "국제경제"}
 
 
 def prepare(args):
@@ -128,20 +133,24 @@ def merge(args):
     pass_existing = load_existing(pass_path) if pass_path.exists() else {}
     ref_existing = load_existing(ref_path) if ref_path.exists() else {}
 
-    pass_count = ref_count = reject_count = 0
+    pass_count = ref_count = ref_discarded_count = reject_count = 0
     for idx, (kind, section, line) in classified.items():
         if kind == "pass":
             pass_existing.setdefault(section, []).append(line)
             pass_count += 1
         elif kind == "ref":
-            ref_existing.setdefault(section, []).append(line)
-            ref_count += 1
+            if section in REF_SECTIONS:
+                ref_existing.setdefault(section, []).append(line)
+                ref_count += 1
+            else:
+                ref_discarded_count += 1
         else:
             reject_count += 1
 
     pass_path.write_text(render(pass_existing), encoding="utf-8")
     ref_path.write_text(render(ref_existing), encoding="utf-8")
-    print(f"[{args.tag}] 2차 결과 - 통과 {pass_count} / 경제이슈참고 {ref_count} / 기각 {reject_count}")
+    print(f"[{args.tag}] 2차 결과 - 통과 {pass_count} / 경제이슈참고 {ref_count}"
+          f"(대상 섹션 외 {ref_discarded_count}건은 기록 안 함) / 기각 {reject_count}")
 
     for p in (day_dir / f"_screen2_input_{args.tag}.md", map_path, result_path):
         p.unlink(missing_ok=True)
