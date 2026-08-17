@@ -112,6 +112,13 @@ def make_chart(code, name, count=100, out_path=None):
         datetime_format="%m.%d", show_nontrading=False,
     )
 
+    # y축을 오른쪽으로 옮겼는데도 mplfinance가 원래 왼쪽 y축용으로 잡아두던 여백이 그대로 남아
+    # 왼쪽에 빈 공간이 크게 생기는 문제. mplfinance는 axes 위치를 subplots_adjust가 안 먹히게
+    # 직접 고정시켜놓으므로(set_position), 각 axes 위치를 직접 왼쪽으로 당겨야 한다.
+    for a in axes:
+        pos = a.get_position()
+        a.set_position([0.035, pos.y0, pos.x1 - 0.035, pos.height])
+
     legend_handles = [
         axes[0].plot([], [], color=MAV_COLORS[p], linewidth=1.8, label=f"{p}일선")[0]
         for p in MAV_PERIODS
